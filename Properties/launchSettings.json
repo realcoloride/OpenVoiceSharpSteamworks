@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "OpenVoiceSharpSteamworks": {
+      "commandName": "Project",
+      "commandLineArgs": "--host"
+    }
+  }
+}
