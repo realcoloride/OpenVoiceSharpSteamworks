@@ -1,8 +1,8 @@
 ﻿using NAudio.Wave;
 using OpenVoiceSharp;
-using Steamworks;
 using SharpAudio;
-using System.Diagnostics;
+using Steamworks;
+using System.Runtime.InteropServices;
 
 namespace OpenVoiceSharpSteamworks
 {
@@ -18,7 +18,7 @@ namespace OpenVoiceSharpSteamworks
 
         #region NAudio
 
-        public static WaveFormat WaveFormat = new(VoiceChatInterface.SampleRate, 16, 1); // mono 16 bit 48kHz
+        private static WaveFormat WaveFormat = new(VoiceChatInterface.SampleRate, 16, 1); // mono 16 bit 48kHz
 
         private static Dictionary<SteamId, (BufferedWaveProvider, DirectSoundOut)> WaveOuts = new();
 
@@ -44,8 +44,8 @@ namespace OpenVoiceSharpSteamworks
 
         #region SharpAudio
 
-        public static AudioEngine AudioEngine = AudioEngine.CreateDefault();
-        public static AudioFormat AudioFormat = new()
+        private static AudioEngine AudioEngine = AudioEngine.CreateDefault();
+        private static AudioFormat AudioFormat = new()
         {
             SampleRate = VoiceChatInterface.SampleRate,
             Channels = 1,
@@ -117,14 +117,28 @@ namespace OpenVoiceSharpSteamworks
                     break;
                 case PlaybackBackend.SharpAudio:
                     // get source and queue samples
-                    var (audioSource, audioBuffer) = GetAudioPlayback(steamId);
+                    var (source, buffer) = GetAudioPlayback(steamId);
 
                     // queue samples
-                    audioBuffer.BufferData(data, AudioFormat);
+                    AudioSource audioSource = (AudioSource)source;
+                    AudioBuffer audioBuffer = (AudioBuffer)buffer;
+
+                    audioBuffer.Format
+
+                    IntPtr pointer = Marshal.AllocHGlobal(length);
+                    Marshal.Copy(data, 0, pointer, length);
+
+                    audioBuffer.BufferData(pointer, length, AudioFormat);
                     audioSource.QueueBuffer(audioBuffer);
+
+                    Marshal.FreeHGlobal(pointer);
 
                     // play
                     audioSource.Play();
+
+                    audioSource.Flush();
+
+                    Console.WriteLine(audioSource.BuffersQueued);
 
                     break;
             }

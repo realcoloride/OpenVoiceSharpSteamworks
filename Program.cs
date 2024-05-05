@@ -1,11 +1,11 @@
 ﻿using OpenVoiceSharp;
 using OpenVoiceSharpSteamworks;
-using SharpAudio;
 using Steamworks;
 using Steamworks.Data;
 
 // play back?
 const bool DisableLoopback = false;
+AudioManager.PlaybackBackend = PlaybackBackend.SharpAudio;
 
 Lobby? lobby = null;
 SteamClient.Init(480);
