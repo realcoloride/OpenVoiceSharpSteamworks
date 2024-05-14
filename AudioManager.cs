@@ -52,12 +52,15 @@ namespace OpenVoiceSharpSteamworks
         {
             if (AudioSources.ContainsKey(steamId)) return;
 
+            // create the buffering source to supply our data
             WriteableBufferingSource audioSource = new(CSCoreWaveFormat) { FillWithZeros = true };
 
+            // create an audio source for the playback
             CSCore.SoundOut.WasapiOut soundOut = new();
             soundOut.Initialize(audioSource);
             soundOut.Play();
 
+            // store it for later
             AudioSources.TryAdd(steamId, new(audioSource, soundOut));
         }
 
