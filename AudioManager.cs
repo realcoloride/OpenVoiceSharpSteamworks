@@ -89,6 +89,7 @@ namespace OpenVoiceSharpSteamworks
         }
         public static void RemoveAudioPlayback(SteamId steamId)
         {
+            // cleaning and disposing
             switch (PlaybackBackend)
             {
                 case PlaybackBackend.NAudio:
