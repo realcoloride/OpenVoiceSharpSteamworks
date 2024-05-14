@@ -5,7 +5,7 @@ using Steamworks.Data;
 
 // play back?
 const bool DisableLoopback = false;
-AudioManager.PlaybackBackend = PlaybackBackend.SharpAudio;
+AudioManager.PlaybackBackend = PlaybackBackend.CSCore;
 
 Lobby? lobby = null;
 SteamClient.Init(480);

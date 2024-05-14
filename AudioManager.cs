@@ -1,6 +1,8 @@
-﻿using NAudio.Wave;
+﻿using CSCore;
+using CSCore.SoundOut;
+using CSCore.Streams;
+using NAudio.Wave;
 using OpenVoiceSharp;
-using SharpAudio;
 using Steamworks;
 using System.Runtime.InteropServices;
 
@@ -9,25 +11,25 @@ namespace OpenVoiceSharpSteamworks
     public enum PlaybackBackend
     {
         NAudio,
-        SharpAudio
+        CSCore
     }
 
     public static class AudioManager
     {
-        public static PlaybackBackend PlaybackBackend = PlaybackBackend.SharpAudio;
+        public static PlaybackBackend PlaybackBackend = PlaybackBackend.CSCore;
 
         #region NAudio
 
-        private static WaveFormat WaveFormat = new(VoiceChatInterface.SampleRate, 16, 1); // mono 16 bit 48kHz
+        private static NAudio.Wave.WaveFormat NAudioWaveFormat = new(VoiceChatInterface.SampleRate, 16, 1); // mono 16 bit 48kHz
 
-        private static Dictionary<SteamId, (BufferedWaveProvider, DirectSoundOut)> WaveOuts = new();
+        private static Dictionary<SteamId, (BufferedWaveProvider, NAudio.Wave.DirectSoundOut)> WaveOuts = new();
 
         private static void CreateWaveOut(SteamId steamId)
         {
             if (WaveOuts.ContainsKey(steamId)) return;
 
-            BufferedWaveProvider bufferedWaveProvider = new(WaveFormat);
-            DirectSoundOut waveOut = new();
+            BufferedWaveProvider bufferedWaveProvider = new(NAudioWaveFormat);
+            NAudio.Wave.DirectSoundOut waveOut = new();
 
             bufferedWaveProvider.DiscardOnBufferOverflow = true;
             bufferedWaveProvider.ReadFully = true;
@@ -38,35 +40,33 @@ namespace OpenVoiceSharpSteamworks
             WaveOuts.TryAdd(steamId, new(bufferedWaveProvider, waveOut));
         }
 
-        private static (BufferedWaveProvider, DirectSoundOut) GetWaveOut(SteamId steamId) => WaveOuts[steamId];
+        private static (BufferedWaveProvider, NAudio.Wave.DirectSoundOut) GetWaveOut(SteamId steamId) => WaveOuts[steamId];
 
         #endregion NAudio
 
-        #region SharpAudio
+        #region CSCore
 
-        private static AudioEngine AudioEngine = AudioEngine.CreateDefault();
-        private static AudioFormat AudioFormat = new()
-        {
-            SampleRate = VoiceChatInterface.SampleRate,
-            Channels = 1,
-            BitsPerSample = 16
-        };
+        private static CSCore.WaveFormat CSCoreWaveFormat = new(VoiceChatInterface.SampleRate, 16, 1); // mono
+        
 
-        private static Dictionary<SteamId, (AudioSource, AudioBuffer)> AudioSources = new();
+        private static Dictionary<SteamId, (WriteableBufferingSource, CSCore.SoundOut.WasapiOut)> AudioSources = new();
 
         private static void CreateAudioSource(SteamId steamId)
         {
             if (AudioSources.ContainsKey(steamId)) return;
 
-            AudioBuffer audioBuffer = AudioEngine.CreateBuffer();
-            AudioSource audioSource = AudioEngine.CreateSource();
+            WriteableBufferingSource audioSource = new(CSCoreWaveFormat) { FillWithZeros = true };
 
-            AudioSources.TryAdd(steamId, new(audioSource, audioBuffer));
+            CSCore.SoundOut.WasapiOut soundOut = new();
+            soundOut.Initialize(audioSource);
+            soundOut.Play();
+
+            AudioSources.TryAdd(steamId, new(audioSource, soundOut));
         }
 
-        private static (AudioSource, AudioBuffer) GetAudioSource(SteamId steamId) => AudioSources[steamId];
+        private static (WriteableBufferingSource, CSCore.SoundOut.WasapiOut) GetAudioSource(SteamId steamId) => AudioSources[steamId];
 
-        #endregion SharpAudio
+        #endregion CSCore
 
         #region Common
         public static (dynamic, dynamic) GetAudioPlayback(SteamId steamId)
@@ -74,7 +74,7 @@ namespace OpenVoiceSharpSteamworks
             return PlaybackBackend switch
             {
                 PlaybackBackend.NAudio => GetWaveOut(steamId),
-                PlaybackBackend.SharpAudio => GetAudioSource(steamId),
+                PlaybackBackend.CSCore => GetAudioSource(steamId),
                 _ => throw new NotImplementedException(),
             };
         }
@@ -84,7 +84,7 @@ namespace OpenVoiceSharpSteamworks
             switch (PlaybackBackend)
             {
                 case PlaybackBackend.NAudio: CreateWaveOut(steamId); break;
-                case PlaybackBackend.SharpAudio: CreateAudioSource(steamId); break;
+                case PlaybackBackend.CSCore: CreateAudioSource(steamId); break;
             }
         }
         public static void RemoveAudioPlayback(SteamId steamId)
@@ -92,7 +92,7 @@ namespace OpenVoiceSharpSteamworks
             switch (PlaybackBackend)
             {
                 case PlaybackBackend.NAudio: WaveOuts.Remove(steamId); break;
-                case PlaybackBackend.SharpAudio: AudioSources.Remove(steamId); break;
+                case PlaybackBackend.CSCore: AudioSources.Remove(steamId); break;
             }
         }
         public static bool DoesPlaybackExist(SteamId steamId)
@@ -100,7 +100,7 @@ namespace OpenVoiceSharpSteamworks
             return PlaybackBackend switch
             {
                 PlaybackBackend.NAudio => WaveOuts.ContainsKey(steamId),
-                PlaybackBackend.SharpAudio => AudioSources.ContainsKey(steamId),
+                PlaybackBackend.CSCore => AudioSources.ContainsKey(steamId),
                 _ => false,
             };
         }
@@ -115,30 +115,14 @@ namespace OpenVoiceSharpSteamworks
                     // add samples
                     bufferedWaveProvider.AddSamples(data, 0, length);
                     break;
-                case PlaybackBackend.SharpAudio:
+                case PlaybackBackend.CSCore:
                     // get source and queue samples
-                    var (source, buffer) = GetAudioPlayback(steamId);
+                    var (source, _) = GetAudioPlayback(steamId);
 
                     // queue samples
-                    AudioSource audioSource = (AudioSource)source;
-                    AudioBuffer audioBuffer = (AudioBuffer)buffer;
+                    WriteableBufferingSource audioSource = (WriteableBufferingSource)source;
 
-                    audioBuffer.Format
-
-                    IntPtr pointer = Marshal.AllocHGlobal(length);
-                    Marshal.Copy(data, 0, pointer, length);
-
-                    audioBuffer.BufferData(pointer, length, AudioFormat);
-                    audioSource.QueueBuffer(audioBuffer);
-
-                    Marshal.FreeHGlobal(pointer);
-
-                    // play
-                    audioSource.Play();
-
-                    audioSource.Flush();
-
-                    Console.WriteLine(audioSource.BuffersQueued);
+                    audioSource.Write(data, 0, length);
 
                     break;
             }
