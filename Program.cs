@@ -73,7 +73,7 @@ SteamFriends.OnGameLobbyJoinRequested += async (joinedLobby, friend) =>
 
 // voice chat
 VoiceChatInterface voiceChatInterface = new(16000);
-BasicMicrophoneRecorder microphoneRecorder = new();
+BasicMicrophoneRecorder microphoneRecorder = new(true);
 
 microphoneRecorder.DataAvailable += (pcmData, length) =>
 {

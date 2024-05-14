@@ -1,10 +1,7 @@
-﻿using CSCore;
-using CSCore.SoundOut;
-using CSCore.Streams;
+﻿using CSCore.Streams;
 using NAudio.Wave;
 using OpenVoiceSharp;
 using Steamworks;
-using System.Runtime.InteropServices;
 
 namespace OpenVoiceSharpSteamworks
 {
@@ -20,16 +17,16 @@ namespace OpenVoiceSharpSteamworks
 
         #region NAudio
 
-        private static NAudio.Wave.WaveFormat NAudioWaveFormat = new(VoiceChatInterface.SampleRate, 16, 1); // mono 16 bit 48kHz
+        private static NAudio.Wave.WaveFormat NAudioWaveFormat = new(VoiceChatInterface.SampleRate, 16, 2); // mono 16 bit 48kHz
 
-        private static Dictionary<SteamId, (BufferedWaveProvider, NAudio.Wave.DirectSoundOut)> WaveOuts = new();
+        private static Dictionary<SteamId, (BufferedWaveProvider, DirectSoundOut)> WaveOuts = new();
 
         private static void CreateWaveOut(SteamId steamId)
         {
             if (WaveOuts.ContainsKey(steamId)) return;
 
             BufferedWaveProvider bufferedWaveProvider = new(NAudioWaveFormat);
-            NAudio.Wave.DirectSoundOut waveOut = new();
+            DirectSoundOut waveOut = new();
 
             bufferedWaveProvider.DiscardOnBufferOverflow = true;
             bufferedWaveProvider.ReadFully = true;
@@ -40,13 +37,13 @@ namespace OpenVoiceSharpSteamworks
             WaveOuts.TryAdd(steamId, new(bufferedWaveProvider, waveOut));
         }
 
-        private static (BufferedWaveProvider, NAudio.Wave.DirectSoundOut) GetWaveOut(SteamId steamId) => WaveOuts[steamId];
+        private static (BufferedWaveProvider, DirectSoundOut) GetWaveOut(SteamId steamId) => WaveOuts[steamId];
 
         #endregion NAudio
 
         #region CSCore
 
-        private static CSCore.WaveFormat CSCoreWaveFormat = new(VoiceChatInterface.SampleRate, 16, 1); // mono
+        private static CSCore.WaveFormat CSCoreWaveFormat = new(VoiceChatInterface.SampleRate, 16, 2); // mono
         
 
         private static Dictionary<SteamId, (WriteableBufferingSource, CSCore.SoundOut.WasapiOut)> AudioSources = new();
@@ -95,7 +92,7 @@ namespace OpenVoiceSharpSteamworks
                     var (provider, directSoundOut) = GetAudioPlayback(steamId);
 
                     var bufferedWaveProvider = (BufferedWaveProvider)provider;
-                    var waveOut = (NAudio.Wave.DirectSoundOut)directSoundOut;
+                    var waveOut = (DirectSoundOut)directSoundOut;
 
                     bufferedWaveProvider.ClearBuffer();
                     waveOut.Stop();
