@@ -91,8 +91,30 @@ namespace OpenVoiceSharpSteamworks
         {
             switch (PlaybackBackend)
             {
-                case PlaybackBackend.NAudio: WaveOuts.Remove(steamId); break;
-                case PlaybackBackend.CSCore: AudioSources.Remove(steamId); break;
+                case PlaybackBackend.NAudio:
+                    var (provider, directSoundOut) = GetAudioPlayback(steamId);
+
+                    var bufferedWaveProvider = (BufferedWaveProvider)provider;
+                    var waveOut = (NAudio.Wave.DirectSoundOut)directSoundOut;
+
+                    bufferedWaveProvider.ClearBuffer();
+                    waveOut.Stop();
+                    waveOut.Dispose();
+
+                    WaveOuts.Remove(steamId); 
+                    break;
+                case PlaybackBackend.CSCore:
+                    var (source, wasapiOut) = GetAudioPlayback(steamId);
+
+                    var audioSource = (WriteableBufferingSource)source;
+                    var soundOut = (CSCore.SoundOut.WasapiOut)wasapiOut;
+
+                    soundOut.Stop();
+                    soundOut.Dispose();
+                    audioSource.Dispose();
+
+                    AudioSources.Remove(steamId); 
+                    break;
             }
         }
         public static bool DoesPlaybackExist(SteamId steamId)
@@ -117,13 +139,10 @@ namespace OpenVoiceSharpSteamworks
                     break;
                 case PlaybackBackend.CSCore:
                     // get source and queue samples
-                    var (source, _) = GetAudioPlayback(steamId);
+                    var (audioSource, _) = GetAudioPlayback(steamId);
 
                     // queue samples
-                    WriteableBufferingSource audioSource = (WriteableBufferingSource)source;
-
                     audioSource.Write(data, 0, length);
-
                     break;
             }
         }

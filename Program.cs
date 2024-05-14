@@ -27,14 +27,8 @@ SteamMatchmaking.OnLobbyMemberLeave += (lobby, friend) =>
     if (!AudioManager.DoesPlaybackExist(friend.Id)) return;
 
     Console.WriteLine($"{friend.Name} left");
+
     // clean garbage
-    var (bufferedWaveProvider, waveOut) = AudioManager.GetAudioPlayback(friend.Id);
-
-    waveOut.Stop();
-    waveOut.Dispose();
-
-    bufferedWaveProvider.ClearBuffer();
-
     AudioManager.RemoveAudioPlayback(friend.Id);
 };
 
