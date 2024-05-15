@@ -17,7 +17,7 @@ namespace OpenVoiceSharpSteamworks
 
         #region NAudio
 
-        private static NAudio.Wave.WaveFormat NAudioWaveFormat = new(VoiceChatInterface.SampleRate, 16, 2); // mono 16 bit 48kHz
+        private static NAudio.Wave.WaveFormat NAudioWaveFormat = new(VoiceChatInterface.SampleRate, 16, 2); // stereo 16 bit 48kHz
 
         private static Dictionary<SteamId, (BufferedWaveProvider, DirectSoundOut)> WaveOuts = new();
 
@@ -43,7 +43,7 @@ namespace OpenVoiceSharpSteamworks
 
         #region CSCore
 
-        private static CSCore.WaveFormat CSCoreWaveFormat = new(VoiceChatInterface.SampleRate, 16, 2); // mono
+        private static CSCore.WaveFormat CSCoreWaveFormat = new(VoiceChatInterface.SampleRate, 16, 2); // stereo
         
 
         private static Dictionary<SteamId, (WriteableBufferingSource, CSCore.SoundOut.WasapiOut)> AudioSources = new();
